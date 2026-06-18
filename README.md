@@ -14,49 +14,45 @@
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-Automation-7C3AED?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-22C55E?style=flat-square)
 
----
-
 </div>
+
+---
 
 ## ✨ What is CodeForge?
 
-**CodeForge is a next-generation DevOps automation platform** designed to remove complexity from software delivery.
+CodeForge is a **next-generation DevOps automation platform** designed to remove complexity from software delivery.
 
-It turns your repositories into **self-deploying systems** with minimal configuration and maximum control.
+It transforms repositories into **self-deploying systems** with minimal configuration.
 
-> Think: **GitHub Actions + Jenkins + Vercel + custom deployment engine — reimagined for developers who ship fast.**
+> Think: GitHub Actions + Jenkins + Vercel — reimagined for modern developers.
 
 ---
 
 ## 🚀 Why CodeForge?
 
-Modern DevOps is fragmented.
+Modern DevOps is fragmented. CodeForge unifies it:
 
-CodeForge unifies everything into one system:
-
-- 🧩 Build pipelines
-- 🔁 Automated deployments
-- 🔐 Secure secrets management
-- 📦 Rollback system
-- 📡 Real-time logs & monitoring
-- 🧠 Human-readable pipeline language (KZM)
-- 🖥️ CLI + GUI + Daemon in one binary
+- 🧩 Build pipelines  
+- 🔁 Automated deployments  
+- 🔐 Secure secrets management  
+- 📦 Rollback system  
+- 📡 Real-time logs & monitoring  
+- 🧠 Human-readable DSL (KZM)  
+- 🖥️ CLI + GUI + Daemon  
 
 ---
 
 ## ⚙️ Core Features
 
 ### ⚡ CI/CD Engine
-- GitHub / GitLab integration
-- Folder watchers
-- Cron-based scheduling
-- Manual & API triggers
+- GitHub / GitLab integration  
+- Folder watchers  
+- Cron scheduling  
+- Manual/API triggers  
 
 ---
 
-### 🧠 KZM Pipeline Language
-
-A simple, human-readable deployment DSL:
+### 🧠 KZM Pipeline DSL
 
 ```kzm
 project "My API"
@@ -69,52 +65,52 @@ before deploy:
 
 deploy to ssh "ubuntu@server" at "/var/www/app":
   restart "pm2 restart app"
+
+
 🔐 Secure Vault
-
-Encrypted secrets using AES-256-GCM
-
+AES-256-GCM encrypted secrets
 Master key protection
 CLI-based management
-Zero secret exposure in logs or UI
+Zero secret exposure
 codeforge secrets set AWS_KEY xxxx
 codeforge secrets list
 🔄 Rollback System
 Snapshot before every deploy
 Instant rollback on failure
-Safe recovery at any point
+Safe recovery anytime
 📊 Real-Time Observability
-Live deployment logs
-Pipeline status dashboard
+Live logs streaming
+Pipeline dashboard
 Success / failure tracking
-Full deployment history
+Full history
 🖥️ Unified Experience
 ⚡ CLI for developers
-🎨 Beautiful GUI (Fyne)
+🎨 GUI (Fyne)
 🔄 Background daemon
-🧭 System tray integration
+🧭 System tray
 🏗️ Architecture
 CodeForge
 ├── CLI (Cobra)
-├── Daemon (Pipeline Engine)
-├── GUI (Fyne Desktop App)
-├── KZM Parser (DSL Engine)
-├── Executors (Build & Deploy)
+├── Daemon (Engine)
+├── GUI (Fyne)
+├── KZM Parser
+├── Executors
 ├── Adapters (SSH, AWS, Docker, cPanel)
-├── Secrets Vault (AES-256-GCM)
-├── Logger (Streaming + JSON logs)
+├── Secrets Vault
+├── Logger
 └── Rollback Engine
 ⚙️ Installation
-🔧 Requirements
+Requirements
 Go 1.22+
 Git
 Linux / macOS / Windows
-📦 Install from source
+Install from source
 git clone https://github.com/your-username/codeforge.git
 cd codeforge
 
 go mod tidy
 go build -ldflags="-s -w" -o codeforge .
-🚀 Install globally
+Install globally
 sudo mv codeforge /usr/local/bin/
 codeforge --version
 🧪 Quick Start
@@ -123,30 +119,24 @@ codeforge check my-api.kzm
 codeforge run my-api.kzm
 codeforge daemon start
 📂 Configuration
-
-All system data lives in:
-
 ~/.codeforge/
 Structure
-pipelines/   → deployment definitions (.kzm)
+pipelines/   → deployment files (.kzm)
 logs/        → execution logs
 snapshots/   → rollback data
-secrets.enc  → encrypted secrets vault
+secrets.enc  → encrypted vault
 master.key   → encryption key
-daemon.pid   → running process
-🔐 Secrets
+daemon.pid   → process file
+🔐 Secrets Management
 codeforge secrets set GITHUB_TOKEN ghp_xxx
 codeforge secrets set SLACK_WEBHOOK https://hooks.slack.com/...
 codeforge secrets list
-
-🔒 Secrets are always encrypted and never exposed anywhere.
-
-🌍 Supported Deploy Targets
+🌍 Supported Targets
 SSH Servers
 AWS Lambda
 Docker Containers
 cPanel Hosting
-S3 Static Hosting
+S3 Hosting
 VPS / Local Systems
 📡 Example Pipeline
 project "Node API"
@@ -161,38 +151,37 @@ deploy to ssh "ubuntu@server" at "/var/www/api":
   restart "pm2 restart api"
 
 notify slack "#deployments"
-🖥️ CLI Commands
-codeforge gui
+📋 Copy Commands
 codeforge init
-codeforge check file.kzm
-codeforge run file.kzm
+codeforge check my-api.kzm
+codeforge run my-api.kzm
 codeforge daemon start
 codeforge status
 codeforge logs my-api --tail
 codeforge trigger my-api
 codeforge rollback my-api
+codeforge gui
 🔔 Notifications
 Slack integration
 Email alerts
 Deployment reports
-Failure notifications
+Failure alerts
 🧠 Design Philosophy
-
-We believe:
-
 Simplicity > Complexity
 Automation > Manual work
 Visibility > Guesswork
 Safety first
 Developer experience matters
 🛣️ Roadmap
- Web dashboard (SaaS version)
- Kubernetes adapter
- GitHub Actions import
- AI deployment assistant
- Multi-region deployments
- Plugin marketplace
+Web dashboard (SaaS version)
+Kubernetes adapter
+GitHub Actions import
+AI deployment assistant
+Multi-region deployments
+Plugin marketplace
 👨‍💻 Author
+
 KhajumSanjog
 
-Built with ❤️ for developers who ship fast and break nothing.
+Built with ❤️ for developers who ship fast and safely.
+
