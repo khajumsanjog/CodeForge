@@ -44,25 +44,29 @@ func (a *CodeForgeApp) buildLogViewerScreen() fyne.CanvasObject {
 
 	// Helper to load logs into pane
 	reloadLogs := func() {
-		logLinesContainer.Objects = nil
 		logDir := filepath.Join(home, ".codeforge", "logs")
 		l := logger.NewLogger(logDir)
 
 		lines, err := l.TailLines(selectedProject, 200)
-		if err != nil {
-			logLinesContainer.Add(widget.NewLabel("Failed to load logs: " + err.Error()))
-			return
-		}
 
-		for _, line := range lines {
-			logLinesContainer.Add(createColorLogLine(line, a))
-		}
+		fyne.Do(func() {
+			logLinesContainer.Objects = nil
+			if err != nil {
+				logLinesContainer.Add(widget.NewLabel("Failed to load logs: " + err.Error()))
+				logLinesContainer.Refresh()
+				return
+			}
 
-		logLinesContainer.Refresh()
+			for _, line := range lines {
+				logLinesContainer.Add(createColorLogLine(line, a))
+			}
 
-		if autoScroll {
-			scroll.ScrollToBottom()
-		}
+			logLinesContainer.Refresh()
+
+			if autoScroll {
+				scroll.ScrollToBottom()
+			}
+		})
 	}
 
 	reloadLogs()

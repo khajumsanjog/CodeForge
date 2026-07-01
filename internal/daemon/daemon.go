@@ -59,8 +59,6 @@ func NewDaemon(cfgDir string, apiPort int, workerCount int, l *logger.Logger) *D
 	resolvedDir := secrets.ResolvePath(cfgDir)
 	_ = os.MkdirAll(filepath.Join(resolvedDir, "pipelines"), 0755)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	d := &Daemon{
 		pipelines: make(map[string]*Pipeline),
 		logger:    l,
@@ -68,9 +66,6 @@ func NewDaemon(cfgDir string, apiPort int, workerCount int, l *logger.Logger) *D
 		apiPort:   apiPort,
 		workers:   workerCount,
 		cfgDir:    resolvedDir,
-		jobChan:   make(chan string, 100),
-		ctx:       ctx,
-		cancel:    cancel,
 		activeRun: make(map[string]bool),
 	}
 
@@ -85,6 +80,8 @@ func (d *Daemon) Start() error {
 		return nil
 	}
 	d.running = true
+	d.ctx, d.cancel = context.WithCancel(context.Background())
+	d.jobChan = make(chan string, 100)
 	d.mu.Unlock()
 
 	d.logger.Log("daemon", "INFO", "Starting CodeForge Daemon...")
@@ -93,6 +90,7 @@ func (d *Daemon) Start() error {
 	var err error
 	d.watcher, err = NewWatcher(d, d.logger)
 	if err != nil {
+		d.Stop()
 		return fmt.Errorf("failed to init watcher: %w", err)
 	}
 
@@ -137,6 +135,7 @@ func (d *Daemon) Start() error {
 	// Bind API port
 	listener, err := net.Listen("tcp", d.httpServer.Addr)
 	if err != nil {
+		d.Stop()
 		return fmt.Errorf("API listener failed: %w", err)
 	}
 
@@ -163,7 +162,9 @@ func (d *Daemon) Stop() {
 	d.logger.Log("daemon", "INFO", "Stopping CodeForge Daemon...")
 
 	// Cancel context to stop scheduler and watcher routines
-	d.cancel()
+	if d.cancel != nil {
+		d.cancel()
+	}
 
 	if d.watcher != nil {
 		d.watcher.Stop()
@@ -177,7 +178,9 @@ func (d *Daemon) Stop() {
 	}
 
 	// Close job channel to drain workers
-	close(d.jobChan)
+	if d.jobChan != nil {
+		close(d.jobChan)
+	}
 
 	// Wait with timeout (up to 30s)
 	done := make(chan struct{})
