@@ -9,10 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build & Release
+  build-linux:
+    name: Build Linux (Headless)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,37 +21,109 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Run tests
-        run: CGO_ENABLED=0 go test -tags headless ./internal/...
-
-      - name: Build all platforms
+      - name: Build Linux Binaries
         run: |
           VERSION=${GITHUB_REF_NAME}
-
-          # Linux AMD64 (servers, VPS, cPanel headless)
-          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -tags headless \
+          mkdir -p dist
+          # Linux AMD64 (headless)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags headless \
             -ldflags="-s -w -X codeforge/cmd.Version=${VERSION}" \
             -o dist/codeforge-linux-amd64 .
-
-          # Linux ARM64 (Raspberry Pi, AWS Graviton)
-          CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -tags headless \
+          # Linux ARM64 (headless)
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags headless \
             -ldflags="-s -w -X codeforge/cmd.Version=${VERSION}" \
             -o dist/codeforge-linux-arm64 .
 
-          # macOS ARM (Apple Silicon M1/M2/M3)
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -tags headless \
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist/*
+
+  build-macos:
+    name: Build macOS (GUI Enabled)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build macOS Binaries
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          mkdir -p dist
+          # macOS ARM64 (GUI enabled)
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build \
             -ldflags="-s -w -X codeforge/cmd.Version=${VERSION}" \
             -o dist/codeforge-macos-arm64 .
-
-          # macOS Intel
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -tags headless \
+          # macOS Intel (GUI enabled)
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build \
             -ldflags="-s -w -X codeforge/cmd.Version=${VERSION}" \
             -o dist/codeforge-macos-amd64 .
 
-          # Windows
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -tags headless \
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: dist/*
+
+  build-windows:
+    name: Build Windows (GUI Enabled)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build Windows Binary
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          mkdir -p dist
+          # Windows AMD64 (GUI enabled)
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build \
             -ldflags="-s -w -X codeforge/cmd.Version=${VERSION}" \
             -o dist/codeforge-windows-amd64.exe .
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist/*
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist
+
+      - name: Download macOS Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+          path: dist
+
+      - name: Download Windows Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
 
       - name: Generate checksums
         run: |
@@ -69,15 +140,15 @@ jobs:
 
             ### Download the right binary for your platform:
 
-            | Platform | Binary |
-            |---|---|
-            | Linux x64 (VPS, server, cPanel) | `codeforge-linux-amd64` |
-            | Linux ARM64 (Raspberry Pi, AWS Graviton) | `codeforge-linux-arm64` |
-            | macOS Apple Silicon (M1/M2/M3) | `codeforge-macos-arm64` |
-            | macOS Intel | `codeforge-macos-amd64` |
-            | Windows | `codeforge-windows-amd64.exe` |
+            | Platform | Binary | GUI Status |
+            |---|---|---|
+            | Linux x64 (VPS, server, cPanel) | `codeforge-linux-amd64` | Headless (CLI/Daemon only) |
+            | Linux ARM64 (Raspberry Pi, AWS Graviton) | `codeforge-linux-arm64` | Headless (CLI/Daemon only) |
+            | macOS Apple Silicon (M1/M2/M3) | `codeforge-macos-arm64` | **GUI Dashboard Enabled** |
+            | macOS Intel | `codeforge-macos-amd64` | **GUI Dashboard Enabled** |
+            | Windows | `codeforge-windows-amd64.exe` | **GUI Dashboard Enabled** |
 
-            ### Quick Install (Linux/macOS):
+            ### Quick Install (Linux/macOS Headless):
             ```bash
             # Linux AMD64
             curl -L https://github.com/khajum-sanjog/CodeForge/releases/download/${{ github.ref_name }}/codeforge-linux-amd64 -o codeforge
