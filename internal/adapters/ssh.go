@@ -36,7 +36,9 @@ func (a *SSHAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sourc
 		return fmt.Errorf("SSH deploy target requires a destination path (use 'at \"/path\"')")
 	}
 
-	client, err := dialSSH(user, host, keyPath)
+	password := target.Options["password"]
+
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return err
 	}
@@ -93,7 +95,8 @@ func (a *SSHAdapter) Status(ctx context.Context, target *kzm.DeployTarget) (stri
 	}
 
 	keyPath := target.Options["key"]
-	client, err := dialSSH(user, host, keyPath)
+	password := target.Options["password"]
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return "DISCONNECTED", nil
 	}
@@ -109,15 +112,19 @@ func parseSSHHost(name string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func dialSSH(user, host, keyPath string) (*ssh.Client, error) {
-	var signers []ssh.Signer
+func dialSSH(user, host, keyPath, password string) (*ssh.Client, error) {
+	var authMethods []ssh.AuthMethod
+
+	if password != "" {
+		authMethods = append(authMethods, ssh.Password(password))
+	}
 
 	// Read provided key path or look at standard defaults
 	keyPaths := []string{}
 	if keyPath != "" {
 		keyPaths = append(keyPaths, resolvePath(keyPath))
-	} else {
-		// Default directories
+	} else if password == "" {
+		// Default directories (only if password is not provided)
 		home, err := os.UserHomeDir()
 		if err == nil {
 			keyPaths = append(keyPaths, filepath.Join(home, ".ssh", "id_rsa"))
@@ -125,6 +132,7 @@ func dialSSH(user, host, keyPath string) (*ssh.Client, error) {
 		}
 	}
 
+	var signers []ssh.Signer
 	for _, kp := range keyPaths {
 		data, err := os.ReadFile(kp)
 		if err != nil {
@@ -136,15 +144,17 @@ func dialSSH(user, host, keyPath string) (*ssh.Client, error) {
 		}
 	}
 
-	if len(signers) == 0 {
-		return nil, fmt.Errorf("no valid SSH private keys found")
+	if len(signers) > 0 {
+		authMethods = append(authMethods, ssh.PublicKeys(signers...))
+	}
+
+	if len(authMethods) == 0 {
+		return nil, fmt.Errorf("no valid SSH private keys or password provided")
 	}
 
 	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signers...),
-		},
+		User:            user,
+		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
 	}

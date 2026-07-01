@@ -55,7 +55,9 @@ func (a *DockerAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, so
 		return err
 	}
 
-	client, err := dialSSH(user, host, target.Options["key"])
+	keyPath := target.Options["key"]
+	password := target.Options["password"]
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return fmt.Errorf("failed to dial remote server: %w", err)
 	}
@@ -120,7 +122,9 @@ func (a *DockerAdapter) Status(ctx context.Context, target *kzm.DeployTarget) (s
 		return "ERROR", err
 	}
 
-	client, err := dialSSH(user, host, target.Options["key"])
+	keyPath := target.Options["key"]
+	password := target.Options["password"]
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return "DISCONNECTED", nil
 	}

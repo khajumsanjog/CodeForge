@@ -30,7 +30,9 @@ func (a *VPSAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sourc
 	restartCmd := target.Options["restart"]
 	gitPull := target.Options["git"]
 
-	client, err := dialSSH(user, host, keyPath)
+	password := target.Options["password"]
+
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return fmt.Errorf("failed to dial VPS host: %w", err)
 	}
@@ -94,7 +96,9 @@ func (a *VPSAdapter) Status(ctx context.Context, target *kzm.DeployTarget) (stri
 		return "ERROR", err
 	}
 
-	client, err := dialSSH(user, host, target.Options["key"])
+	keyPath := target.Options["key"]
+	password := target.Options["password"]
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return "DISCONNECTED", nil
 	}

@@ -34,10 +34,11 @@ func (a *CPanelAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, so
 		return fmt.Errorf("cPanel deploy requires destination path (use 'at \"/public_html\"')")
 	}
 
-	// Read options for key
+	// Read options for key and password
 	keyPath := target.Options["key"]
+	password := target.Options["password"]
 
-	client, err := dialSSH(user, host, keyPath)
+	client, err := dialSSH(user, host, keyPath, password)
 	if err != nil {
 		return fmt.Errorf("failed to connect to cPanel host %s: %w", host, err)
 	}
@@ -79,7 +80,9 @@ func (a *CPanelAdapter) Status(ctx context.Context, target *kzm.DeployTarget) (s
 	if user == "" {
 		return "ERROR", fmt.Errorf("missing user")
 	}
-	client, err := dialSSH(user, target.Name, target.Options["key"])
+	keyPath := target.Options["key"]
+	password := target.Options["password"]
+	client, err := dialSSH(user, target.Name, keyPath, password)
 	if err != nil {
 		return "DISCONNECTED", nil
 	}
