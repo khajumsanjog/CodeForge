@@ -11,12 +11,23 @@ import (
 
 // SlackNotifier sends a formatted webhook request using Slack Block Kit.
 type SlackNotifier struct {
-	WebhookURL string
+	WebhookURL  string
+	BearerToken string // Optional: Bearer token for authenticated webhooks
+	SigningKey   string // Optional: X-Slack-Signing-Secret or custom header key
 }
 
 // NewSlackNotifier returns a new SlackNotifier instance.
 func NewSlackNotifier(webhookURL string) *SlackNotifier {
 	return &SlackNotifier{WebhookURL: webhookURL}
+}
+
+// NewSlackNotifierWithAuth returns a SlackNotifier with optional authentication.
+func NewSlackNotifierWithAuth(webhookURL, bearerToken, signingKey string) *SlackNotifier {
+	return &SlackNotifier{
+		WebhookURL:  webhookURL,
+		BearerToken: bearerToken,
+		SigningKey:   signingKey,
+	}
 }
 
 // Send posts a formatted deployment update to the Slack webhook.
@@ -103,6 +114,14 @@ func (s *SlackNotifier) Send(payload Payload) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	// Add optional authentication headers
+	if s.BearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.BearerToken)
+	}
+	if s.SigningKey != "" {
+		req.Header.Set("X-Slack-Signing-Secret", s.SigningKey)
+	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

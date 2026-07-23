@@ -496,27 +496,42 @@ func (d *Daemon) dispatchNotifications(prog *kzm.Program, status string, duratio
 	for _, n := range prog.Notifiers {
 		switch strings.ToLower(n.Channel) {
 		case "slack":
-			sl := notifier.NewSlackNotifier(n.Target)
+			var bearerToken, signingKey string
+			if cfgData, err := os.ReadFile(filepath.Join(d.cfgDir, "settings.json")); err == nil {
+				var savedCfg struct {
+					SlackBearerToken string `json:"slack_bearer_token"`
+					SlackSigningKey  string `json:"slack_signing_key"`
+				}
+				if json.Unmarshal(cfgData, &savedCfg) == nil {
+					bearerToken = savedCfg.SlackBearerToken
+					signingKey = savedCfg.SlackSigningKey
+				}
+			}
+			sl := notifier.NewSlackNotifierWithAuth(n.Target, bearerToken, signingKey)
 			err := sl.Send(payload)
 			if err != nil {
 				d.logger.Log(prog.Meta.Name, "WARNING", "Slack notification failed: %v", err)
 			}
 		case "email":
-			// Load SMTP configs: first from settings.json, then fall back to env vars
+			// Load SMTP configs: check MAIL_FROM_ADDRESS / SMTP_FROM first, then settings.json override
 			host := os.Getenv("SMTP_HOST")
 			portStr := os.Getenv("SMTP_PORT")
 			user := os.Getenv("SMTP_USER")
 			pass := os.Getenv("SMTP_PASS")
-			from := os.Getenv("SMTP_FROM")
+			from := os.Getenv("MAIL_FROM_ADDRESS")
+			if from == "" {
+				from = os.Getenv("SMTP_FROM")
+			}
 
 			// Override with user's saved settings.json values (higher priority)
 			if cfgData, err := os.ReadFile(filepath.Join(d.cfgDir, "settings.json")); err == nil {
 				var savedCfg struct {
-					SMTPHost string `json:"smtp_host"`
-					SMTPPort int    `json:"smtp_port"`
-					SMTPUser string `json:"smtp_user"`
-					SMTPPass string `json:"smtp_pass"`
-					Email    string `json:"email_address"`
+					SMTPHost       string `json:"smtp_host"`
+					SMTPPort       int    `json:"smtp_port"`
+					SMTPUser       string `json:"smtp_user"`
+					SMTPPass       string `json:"smtp_pass"`
+					EmailAddresses string `json:"email_addresses"`
+					MailFrom       string `json:"mail_from"`
 				}
 				if json.Unmarshal(cfgData, &savedCfg) == nil {
 					if savedCfg.SMTPHost != "" {
@@ -531,8 +546,8 @@ func (d *Daemon) dispatchNotifications(prog *kzm.Program, status string, duratio
 					if savedCfg.SMTPPass != "" {
 						pass = savedCfg.SMTPPass
 					}
-					if savedCfg.Email != "" && from == "" {
-						from = savedCfg.Email
+					if savedCfg.MailFrom != "" {
+						from = savedCfg.MailFrom
 					}
 				}
 			}

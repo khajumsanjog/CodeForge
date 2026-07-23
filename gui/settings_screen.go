@@ -13,17 +13,20 @@ import (
 )
 
 type AppSettings struct {
-	ConfigDir    string `json:"config_dir"`
-	APIPort      int    `json:"api_port"`
-	Workers      int    `json:"workers"`
-	PollInterval int    `json:"poll_interval"`
-	ThemeMode    string `json:"theme_mode"` // Dark, Light
-	SlackWebhook string `json:"slack_webhook"`
-	EmailAddress string `json:"email_address"`
-	SMTPHost     string `json:"smtp_host"`
-	SMTPPort     int    `json:"smtp_port"`
-	SMTPUser     string `json:"smtp_user"`
-	SMTPPass     string `json:"smtp_pass"`
+	ConfigDir       string `json:"config_dir"`
+	APIPort         int    `json:"api_port"`
+	Workers         int    `json:"workers"`
+	PollInterval    int    `json:"poll_interval"`
+	ThemeMode       string `json:"theme_mode"` // Dark, Light
+	SlackWebhook    string `json:"slack_webhook"`
+	SlackBearerToken string `json:"slack_bearer_token"`
+	SlackSigningKey string `json:"slack_signing_key"`
+	EmailAddresses  string `json:"email_addresses"` // comma-separated
+	MailFrom        string `json:"mail_from"`        // MAIL_FROM_ADDRESS
+	SMTPHost        string `json:"smtp_host"`
+	SMTPPort        int    `json:"smtp_port"`
+	SMTPUser        string `json:"smtp_user"`
+	SMTPPass        string `json:"smtp_pass"`
 }
 
 func loadSettings() *AppSettings {
@@ -117,14 +120,31 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 	notifTitle := widget.NewLabel("Default Notifications")
 	notifTitle.TextStyle = fyne.TextStyle{Bold: true}
 
+	// Slack settings
 	slackEntry := widget.NewEntry()
 	slackEntry.SetText(cfg.SlackWebhook)
+	slackEntry.SetPlaceHolder("https://hooks.slack.com/services/...")
 
+	slackTokenEntry := widget.NewPasswordEntry()
+	slackTokenEntry.SetText(cfg.SlackBearerToken)
+	slackTokenEntry.SetPlaceHolder("Optional: Bearer token for authenticated webhooks")
+
+	slackSigningEntry := widget.NewPasswordEntry()
+	slackSigningEntry.SetText(cfg.SlackSigningKey)
+	slackSigningEntry.SetPlaceHolder("Optional: Signing secret / custom header key")
+
+	// Email settings
 	emailEntry := widget.NewEntry()
-	emailEntry.SetText(cfg.EmailAddress)
+	emailEntry.SetText(cfg.EmailAddresses)
+	emailEntry.SetPlaceHolder("user1@example.com, user2@example.com")
+
+	mailFromEntry := widget.NewEntry()
+	mailFromEntry.SetText(cfg.MailFrom)
+	mailFromEntry.SetPlaceHolder("CodeForge <noreply@yourdomain.com>")
 
 	smtpHost := widget.NewEntry()
 	smtpHost.SetText(cfg.SMTPHost)
+	smtpHost.SetPlaceHolder("smtp.gmail.com")
 
 	smtpPort := widget.NewEntry()
 	smtpPort.SetText(fmt.Sprintf("%d", cfg.SMTPPort))
@@ -138,11 +158,14 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 
 	notifForm := widget.NewForm(
 		widget.NewFormItem("Slack Webhook URL", slackEntry),
+		widget.NewFormItem("Slack Bearer Token", slackTokenEntry),
+		widget.NewFormItem("Slack Signing Key", slackSigningEntry),
 		widget.NewFormItem("SMTP Host", smtpHost),
 		widget.NewFormItem("SMTP Port", smtpPort),
 		widget.NewFormItem("SMTP Username", smtpUser),
 		widget.NewFormItem("SMTP Password", smtpPass),
-		widget.NewFormItem("Default Recipient", emailEntry),
+		widget.NewFormItem("Mail From Address", mailFromEntry),
+		widget.NewFormItem("Recipients (comma-separated)", emailEntry),
 	)
 
 	// 4. Danger Zone
@@ -185,7 +208,10 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 		cfg.PollInterval = int(pollSlider.Value)
 		cfg.ThemeMode = themeSelect.Selected
 		cfg.SlackWebhook = slackEntry.Text
-		cfg.EmailAddress = emailEntry.Text
+		cfg.SlackBearerToken = slackTokenEntry.Text
+		cfg.SlackSigningKey = slackSigningEntry.Text
+		cfg.EmailAddresses = emailEntry.Text
+		cfg.MailFrom = mailFromEntry.Text
 		cfg.SMTPHost = smtpHost.Text
 		_, _ = fmt.Sscanf(smtpPort.Text, "%d", &cfg.SMTPPort)
 		cfg.SMTPUser = smtpUser.Text
