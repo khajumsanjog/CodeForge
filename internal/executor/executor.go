@@ -9,12 +9,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	"codeforge/internal/adapters"
 	"codeforge/internal/kzm"
 	"codeforge/internal/logger"
+	"codeforge/internal/progress"
 	"codeforge/internal/secrets"
 )
 
@@ -56,6 +58,15 @@ func (e *Executor) Execute(ctx context.Context, prog *kzm.Program, sourceDir str
 		Success: true,
 		Steps:   []StepResult{},
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			stack := string(debug.Stack())
+			e.logger.LogException(prog.Meta.Name, r, stack)
+			res.Success = false
+			res.Error = fmt.Errorf("panic exception: %v", r)
+		}
+	}()
 
 	e.logger.Log(prog.Meta.Name, "INFO", "Starting deployment pipeline for %q (v%s)...", prog.Meta.Name, prog.Meta.Version)
 
@@ -146,9 +157,30 @@ func (e *Executor) Execute(ctx context.Context, prog *kzm.Program, sourceDir str
 			defer os.Unsetenv(k)
 		}
 
+		// Calculate files & size for progress bar
+		var totalFiles, totalBytes int64
+		_ = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() && !shouldSkip(path) {
+				totalFiles++
+				totalBytes += info.Size()
+			}
+			return nil
+		})
+
+		tracker := progress.NewTracker(totalFiles, totalBytes)
+		var lastProgressLog time.Time
+		tracker.RegisterCallback(func(snap progress.Snapshot) {
+			if time.Since(lastProgressLog) > 400*time.Millisecond || snap.Percentage >= 100 {
+				lastProgressLog = time.Now()
+				bar := progress.RenderCLIProgressBar(snap, 24)
+				e.logger.Log(prog.Meta.Name, "INFO", "Transfer Progress: %s", bar)
+			}
+		})
+		deployCtx := progress.WithTracker(ctx, tracker)
+
 		// Perform Deploy
 		deployStart := time.Now()
-		err = adapter.Deploy(ctx, resolvedTarget, sourceDir)
+		err = adapter.Deploy(deployCtx, resolvedTarget, sourceDir)
 		deployDur := time.Since(deployStart)
 
 		stepRes := StepResult{
@@ -370,6 +402,11 @@ func (e *Executor) triggerRollback(ctx context.Context, prog *kzm.Program, targe
 	}
 
 	e.logger.Log(prog.Meta.Name, "INFO", "Restoring files from snapshot %s...", filepath.Base(latestSnap))
+	if snapObj, snapErr := LoadSnapshot(latestSnap); snapErr == nil {
+		if diff, diffErr := ComputeDiff(snapObj, sourceDir); diffErr == nil {
+			e.logger.Log(prog.Meta.Name, "INFO", "Differential Rollback Analysis: %s", diff.Summary())
+		}
+	}
 	tmpRestore, err := os.MkdirTemp("", "codeforge-restore-*")
 	if err != nil {
 		e.logger.Log(prog.Meta.Name, "ERROR", "Failed to create temp restore directory: %v", err)

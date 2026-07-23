@@ -1,10 +1,11 @@
 package executor
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,14 +13,35 @@ import (
 	"time"
 )
 
-// Snapshot represents a packaged deployment state.
-type Snapshot struct {
-	Project   string            `json:"project"`
-	Timestamp string            `json:"timestamp"`
-	Files     map[string]string `json:"files"` // relPath -> base64(content)
+// FileMeta holds metadata and payload for differential comparison.
+type FileMeta struct {
+	ContentB64 string `json:"content"`
+	SHA256     string `json:"sha256"`
+	Size       int64  `json:"size"`
+	Mode       uint32 `json:"mode"`
 }
 
-// SaveSnapshot walks the target sourceDir, encodes files into base64, and writes a JSON snapshot.
+// Snapshot represents a versioned workspace snapshot.
+type Snapshot struct {
+	Project   string              `json:"project"`
+	Timestamp string              `json:"timestamp"`
+	Files     map[string]FileMeta `json:"files"` // relPath -> FileMeta
+}
+
+// DiffResult describes differential changes between current directory state and snapshot.
+type DiffResult struct {
+	Modified   []string
+	Missing    []string
+	Extraneous []string
+	Unchanged  []string
+}
+
+func (d DiffResult) Summary() string {
+	return fmt.Sprintf("Diff Summary: %d modified, %d missing, %d extraneous (pruned), %d unchanged",
+		len(d.Modified), len(d.Missing), len(d.Extraneous), len(d.Unchanged))
+}
+
+// SaveSnapshot walks sourceDir, computes SHA256 hashes & encodes files into a versioned JSON snapshot.
 func SaveSnapshot(project, sourceDir, snapshotDir string) (string, error) {
 	resolvedDir := resolvePath(snapshotDir)
 	projectDir := filepath.Join(resolvedDir, sanitizeFilename(project))
@@ -30,7 +52,7 @@ func SaveSnapshot(project, sourceDir, snapshotDir string) (string, error) {
 	snap := Snapshot{
 		Project:   project,
 		Timestamp: time.Now().Format(time.RFC3339),
-		Files:     make(map[string]string),
+		Files:     make(map[string]FileMeta),
 	}
 
 	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
@@ -46,37 +68,35 @@ func SaveSnapshot(project, sourceDir, snapshotDir string) (string, error) {
 			return err
 		}
 
-		// Skip skipped paths
 		if shouldSkip(rel) {
 			return nil
 		}
 
-		// Read and encode file
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		data, err := io.ReadAll(f)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
-		snap.Files[rel] = base64.StdEncoding.EncodeToString(data)
+		hash := sha256.Sum256(data)
+		hashStr := hex.EncodeToString(hash[:])
+
+		snap.Files[rel] = FileMeta{
+			ContentB64: base64.StdEncoding.EncodeToString(data),
+			SHA256:     hashStr,
+			Size:       info.Size(),
+			Mode:       uint32(info.Mode()),
+		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
 
-	// Marshall to JSON
 	snapData, err := json.Marshal(snap)
 	if err != nil {
 		return "", err
 	}
 
-	// Write JSON file
 	filename := fmt.Sprintf("%d.json", time.Now().UnixNano())
 	snapPath := filepath.Join(projectDir, filename)
 	if err := os.WriteFile(snapPath, snapData, 0644); err != nil {
@@ -86,15 +106,104 @@ func SaveSnapshot(project, sourceDir, snapshotDir string) (string, error) {
 	return snapPath, nil
 }
 
-// RestoreSnapshot reads a JSON snapshot and writes its files into the target outputDir.
-func RestoreSnapshot(snapshotPath, outputDir string) error {
+// LoadSnapshot parses a JSON snapshot with backward compatibility for legacy snapshots.
+func LoadSnapshot(snapshotPath string) (*Snapshot, error) {
 	data, err := os.ReadFile(snapshotPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var snap Snapshot
-	if err := json.Unmarshal(data, &snap); err != nil {
+	var raw struct {
+		Project   string                     `json:"project"`
+		Timestamp string                     `json:"timestamp"`
+		Files     map[string]json.RawMessage `json:"files"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+
+	snap := &Snapshot{
+		Project:   raw.Project,
+		Timestamp: raw.Timestamp,
+		Files:     make(map[string]FileMeta),
+	}
+
+	for rel, rawMsg := range raw.Files {
+		var strVal string
+		if err := json.Unmarshal(rawMsg, &strVal); err == nil {
+			// Legacy format: string content base64
+			fileData, _ := base64.StdEncoding.DecodeString(strVal)
+			hash := sha256.Sum256(fileData)
+			snap.Files[rel] = FileMeta{
+				ContentB64: strVal,
+				SHA256:     hex.EncodeToString(hash[:]),
+				Size:       int64(len(fileData)),
+				Mode:       0644,
+			}
+		} else {
+			var meta FileMeta
+			if err := json.Unmarshal(rawMsg, &meta); err == nil {
+				snap.Files[rel] = meta
+			}
+		}
+	}
+
+	return snap, nil
+}
+
+// ComputeDiff calculates differential changes between outputDir and snapshot.
+func ComputeDiff(snapshot *Snapshot, outputDir string) (DiffResult, error) {
+	diff := DiffResult{}
+	targetFiles := make(map[string]string) // relPath -> SHA256
+
+	if _, err := os.Stat(outputDir); err == nil {
+		_ = filepath.Walk(outputDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(outputDir, path)
+			if err != nil || shouldSkip(rel) {
+				return nil
+			}
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			hash := sha256.Sum256(data)
+			targetFiles[rel] = hex.EncodeToString(hash[:])
+			return nil
+		})
+	}
+
+	// Compare snapshot files against target files
+	for rel, meta := range snapshot.Files {
+		targetHash, exists := targetFiles[rel]
+		if !exists {
+			diff.Missing = append(diff.Missing, rel)
+		} else if targetHash != meta.SHA256 {
+			diff.Modified = append(diff.Modified, rel)
+		} else {
+			diff.Unchanged = append(diff.Unchanged, rel)
+		}
+	}
+
+	// Check for extraneous files created during failed deployments
+	for rel := range targetFiles {
+		if _, inSnap := snapshot.Files[rel]; !inSnap {
+			diff.Extraneous = append(diff.Extraneous, rel)
+		}
+	}
+
+	return diff, nil
+}
+
+// RestoreSnapshot performs Git-like version control differential rollback.
+// Only modifies files that changed, restores missing files, and prunes extraneous files created after snapshot.
+func RestoreSnapshot(snapshotPath, outputDir string) error {
+	snap, err := LoadSnapshot(snapshotPath)
+	if err != nil {
 		return err
 	}
 
@@ -102,8 +211,26 @@ func RestoreSnapshot(snapshotPath, outputDir string) error {
 		return err
 	}
 
-	for rel, b64 := range snap.Files {
-		fileData, err := base64.StdEncoding.DecodeString(b64)
+	diff, err := ComputeDiff(snap, outputDir)
+	if err != nil {
+		return err
+	}
+
+	// 1. Delete extraneous files created during failed deployment
+	for _, rel := range diff.Extraneous {
+		targetPath := filepath.Join(outputDir, rel)
+		_ = os.Remove(targetPath)
+	}
+
+	// 2. Restore modified & missing files
+	toRestore := append(diff.Modified, diff.Missing...)
+	for _, rel := range toRestore {
+		meta, ok := snap.Files[rel]
+		if !ok {
+			continue
+		}
+
+		fileData, err := base64.StdEncoding.DecodeString(meta.ContentB64)
 		if err != nil {
 			return err
 		}
@@ -113,7 +240,12 @@ func RestoreSnapshot(snapshotPath, outputDir string) error {
 			return err
 		}
 
-		if err := os.WriteFile(filePath, fileData, 0644); err != nil {
+		mode := os.FileMode(meta.Mode)
+		if mode == 0 {
+			mode = 0644
+		}
+
+		if err := os.WriteFile(filePath, fileData, mode); err != nil {
 			return err
 		}
 	}
@@ -129,7 +261,6 @@ func GetLatestSnapshot(project, snapshotDir string) (string, error) {
 		return "", fmt.Errorf("no snapshots found for project %q", project)
 	}
 
-	// Sort matches
 	sort.Strings(matches)
 	return matches[len(matches)-1], nil
 }

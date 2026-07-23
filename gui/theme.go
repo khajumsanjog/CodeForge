@@ -14,23 +14,23 @@ type CodeForgeTheme struct{}
 func (t CodeForgeTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	switch name {
 	case theme.ColorNamePrimary:
-		return color.NRGBA{R: 0x53, G: 0x4A, B: 0xB7, A: 0xFF} // #534AB7 (purple)
+		return color.NRGBA{R: 0x63, G: 0x66, B: 0xF1, A: 0xFF} // #6366F1 (Indigo Accent)
 	case theme.ColorNameBackground:
-		return color.NRGBA{R: 0x1A, G: 0x1A, B: 0x2E, A: 0xFF} // #1a1a2e (dark background)
+		return color.NRGBA{R: 0x0F, G: 0x17, B: 0x2A, A: 0xFF} // #0F172A (Dark Slate Navy)
 	case theme.ColorNameForeground:
-		return color.NRGBA{R: 0xF5, G: 0xF4, B: 0xFF, A: 0xFF} // #f5f4ff (light foreground)
+		return color.NRGBA{R: 0xF8, G: 0xFA, B: 0xFC, A: 0xFF} // #F8FAFC (Crisp White)
 	case theme.ColorNameSuccess:
-		return color.NRGBA{R: 0x0F, G: 0x6E, B: 0x56, A: 0xFF} // #0F6E56 (green success)
+		return color.NRGBA{R: 0x10, G: 0xB9, B: 0x81, A: 0xFF} // #10B981 (Emerald Green)
 	case theme.ColorNameError:
-		return color.NRGBA{R: 0xD8, G: 0x5A, B: 0x30, A: 0xFF} // #D85A30 (red error)
+		return color.NRGBA{R: 0xEF, G: 0x44, B: 0x44, A: 0xFF} // #EF4444 (Vibrant Red)
 	case theme.ColorNameWarning:
-		return color.NRGBA{R: 0xBA, G: 0x75, B: 0x17, A: 0xFF} // #BA7517 (amber warning)
+		return color.NRGBA{R: 0xF5, G: 0x9E, B: 0x0B, A: 0xFF} // #F59E0B (Amber Warning)
 	case theme.ColorNameInputBackground:
-		return color.NRGBA{R: 0x24, G: 0x24, B: 0x3B, A: 0xFF}
+		return color.NRGBA{R: 0x1E, G: 0x29, B: 0x3B, A: 0xFF} // #1E293B (Slate Input)
 	case theme.ColorNameButton:
-		return color.NRGBA{R: 0x53, G: 0x4A, B: 0xB7, A: 0xFF}
+		return color.NRGBA{R: 0x4F, G: 0x46, B: 0xE5, A: 0xFF} // #4F46E5 (Deep Indigo Button)
 	case theme.ColorNameShadow:
-		return color.NRGBA{R: 0, G: 0, B: 0, A: 0x66}
+		return color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x80}
 	default:
 		return theme.DefaultTheme().Color(name, theme.VariantDark)
 	}

@@ -98,16 +98,19 @@ func (a *CodeForgeApp) showAddSecretModal() {
 	keyEntry.SetPlaceHolder("AWS_ACCESS_KEY_ID")
 
 	valEntry := widget.NewPasswordEntry()
-	valEntry.SetPlaceHolder("Value")
+	valEntry.SetPlaceHolder("Enter secret value")
 
 	form := widget.NewForm(
 		widget.NewFormItem("Key", keyEntry),
 		widget.NewFormItem("Value", valEntry),
 	)
 
+	title := widget.NewLabel("🔒 Add New Secret")
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
 	var modal *widget.PopUp
 
-	saveBtn := widget.NewButton("Save", func() {
+	saveBtn := widget.NewButton("Save Secret", func() {
 		key := keyEntry.Text
 		val := valEntry.Text
 		if key == "" || val == "" {
@@ -129,18 +132,35 @@ func (a *CodeForgeApp) showAddSecretModal() {
 		}
 		dialog.ShowError(err, a.MainWindow)
 	})
+	saveBtn.Importance = widget.HighImportance
 
 	cancelBtn := widget.NewButton("Cancel", func() {
 		modal.Hide()
 	})
 
-	buttons := container.NewHBox(cancelBtn, saveBtn)
-	content := container.NewVBox(
-		widget.NewLabel("Add New Secret:"),
-		form,
+	buttons := container.NewHBox(
+		layout.NewSpacer(),
+		cancelBtn,
+		saveBtn,
+	)
+
+	box := container.NewVBox(
+		title,
+		widget.NewSeparator(),
+		container.NewPadded(form),
+		widget.NewSeparator(),
 		buttons,
 	)
 
-	modal = widget.NewModalPopUp(content, a.MainWindow.Canvas())
+	paddedContent := container.NewPadded(box)
+
+	// Wrap in a fixed min-size container so inputs and buttons have generous space
+	minSizeContainer := container.NewStack(paddedContent)
+	minSizeContainer.Resize(fyne.NewSize(480, 240))
+
+	// Ensure layout honors min size
+	constrained := container.NewGridWrap(fyne.NewSize(480, 240), minSizeContainer)
+
+	modal = widget.NewModalPopUp(constrained, a.MainWindow.Canvas())
 	modal.Show()
 }

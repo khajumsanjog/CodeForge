@@ -63,16 +63,16 @@ func (a *CodeForgeApp) Run() {
 // showSplash creates a borderless window displaying project details for 2 seconds.
 func (a *CodeForgeApp) showSplash() {
 	splash := a.FyneApp.NewWindow("CodeForge Loading")
-	splash.Resize(fyne.NewSize(500, 300))
+	splash.Resize(fyne.NewSize(560, 360))
 	splash.CenterOnScreen()
 
 	logo := LoadLogo()
 	img := canvas.NewImageFromResource(logo)
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(120, 120))
+	img.SetMinSize(fyne.NewSize(180, 180))
 
 	title := canvas.NewText("CodeForge", a.FyneApp.Settings().Theme().Color("primary", 0))
-	title.TextSize = 24
+	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
 

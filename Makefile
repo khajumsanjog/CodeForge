@@ -1,4 +1,4 @@
-VERSION=1.0.0
+VERSION=1.2.0
 BINARY=codeforge
 LDFLAGS=-ldflags="-s -w -X codeforge/cmd.Version=$(VERSION)"
 

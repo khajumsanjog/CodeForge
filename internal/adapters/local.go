@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"codeforge/internal/kzm"
+	"codeforge/internal/progress"
 )
 
 // LocalAdapter manages deployments onto the local filesystem of the CI/CD server.
@@ -33,6 +34,8 @@ func (a *LocalAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sou
 	if err := os.MkdirAll(dest, 0755); err != nil {
 		return fmt.Errorf("failed to create destination dir: %w", err)
 	}
+
+	tracker := progress.GetTracker(ctx)
 
 	// Read options
 	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
@@ -63,7 +66,16 @@ func (a *LocalAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sou
 			return os.MkdirAll(targetPath, info.Mode())
 		}
 
-		return copyFile(path, targetPath)
+		if tracker != nil {
+			tracker.StartFile(rel)
+		}
+
+		err = copyFileWithTracker(path, targetPath, tracker)
+
+		if tracker != nil {
+			tracker.CompleteFile()
+		}
+		return err
 	})
 }
 
@@ -96,6 +108,10 @@ func (a *LocalAdapter) Status(ctx context.Context, target *kzm.DeployTarget) (st
 }
 
 func copyFile(src, dst string) error {
+	return copyFileWithTracker(src, dst, nil)
+}
+
+func copyFileWithTracker(src, dst string, tracker *progress.Tracker) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -108,7 +124,12 @@ func copyFile(src, dst string) error {
 	}
 	defer out.Close()
 
-	_, err = io.Copy(out, in)
+	var r io.Reader = in
+	if tracker != nil {
+		r = progress.NewProgressReader(in, tracker)
+	}
+
+	_, err = io.Copy(out, r)
 	return err
 }
 

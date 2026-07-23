@@ -60,7 +60,14 @@ func (l *Logger) Log(project, level, format string, args ...interface{}) {
 
 	// Print to CLI stdout with project prefix
 	prefix := fmt.Sprintf("[%s] [%s]", time.Now().Format("15:04:05"), project)
-	fmt.Printf("%s %s\n", color.New(color.FgHiBlack).Sprint(prefix), colorFn(msg))
+	switch strings.ToLower(level) {
+	case "exception", "panic", "fatal":
+		color.Red("--------------------------------------------------------------------------------")
+		color.Red("💥 EXCEPTION IN TERMINAL [%s]: %s", project, msg)
+		color.Red("--------------------------------------------------------------------------------")
+	default:
+		fmt.Printf("%s %s\n", color.New(color.FgHiBlack).Sprint(prefix), colorFn(msg))
+	}
 
 	// Write JSON to daily log file
 	dateStr := time.Now().Format("2006-01-02")
@@ -210,3 +217,20 @@ func sanitizeFilename(name string) string {
 		return '_'
 	}, name)
 }
+
+// LogException formats runtime errors and panics with full colorized stack trace output to terminal.
+func (l *Logger) LogException(project string, r interface{}, stackTrace string) {
+	errStr := fmt.Sprintf("%v", r)
+	color.Red("\n================================================================================")
+	color.Red("  🚨 CODEFORGE TERMINAL EXCEPTION CAUGHT")
+	color.Red("  Project: %s", project)
+	color.Red("  Error:   %s", errStr)
+	color.Red("--------------------------------------------------------------------------------")
+	if stackTrace != "" {
+		color.Yellow("%s", stackTrace)
+	}
+	color.Red("================================================================================\n")
+
+	l.Log(project, "EXCEPTION", "Runtime Panic: %s\nStack:\n%s", errStr, stackTrace)
+}
+
