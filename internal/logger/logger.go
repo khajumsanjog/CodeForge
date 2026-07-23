@@ -46,16 +46,16 @@ func (l *Logger) Log(project, level, format string, args ...interface{}) {
 	timestamp := time.Now().Format(time.RFC3339)
 
 	// Build CLI prefix and log text
-	var colorFn func(format string, a ...interface{}) string
+	var colorFn func(a ...interface{}) string
 	switch strings.ToLower(level) {
 	case "success":
-		colorFn = color.New(color.FgGreen).SprintfFunc()
+		colorFn = color.New(color.FgGreen).SprintFunc()
 	case "failed", "error":
-		colorFn = color.New(color.FgRed).SprintfFunc()
+		colorFn = color.New(color.FgRed).SprintFunc()
 	case "warning":
-		colorFn = color.New(color.FgYellow).SprintfFunc()
+		colorFn = color.New(color.FgYellow).SprintFunc()
 	default:
-		colorFn = color.New(color.FgCyan).SprintfFunc()
+		colorFn = color.New(color.FgCyan).SprintFunc()
 	}
 
 	// Print to CLI stdout with project prefix
