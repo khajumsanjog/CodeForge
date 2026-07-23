@@ -157,10 +157,14 @@ func (e *Executor) Execute(ctx context.Context, prog *kzm.Program, sourceDir str
 			defer os.Unsetenv(k)
 		}
 
-		// Calculate files & size for progress bar
+		// Calculate files & size for progress bar (use relative paths for shouldSkip)
 		var totalFiles, totalBytes int64
 		_ = filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && !shouldSkip(path) {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			rel, relErr := filepath.Rel(sourceDir, path)
+			if relErr == nil && !shouldSkip(rel) {
 				totalFiles++
 				totalBytes += info.Size()
 			}

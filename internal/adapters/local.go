@@ -22,23 +22,31 @@ func NewLocalAdapter() *LocalAdapter {
 
 // Deploy copies files recursively from the source directory to the destination path specified in targets options.
 func (a *LocalAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sourceDir string) error {
-	dest := target.Options["path"]
+	dest := strings.TrimSpace(target.Options["path"])
 	if dest == "" {
-		dest = target.Name
+		dest = strings.TrimSpace(target.Name)
 	}
 	if dest == "" {
 		return fmt.Errorf("local deploy target requires a destination path")
 	}
 
+	// Log resolved source and destination clearly
 	dest = resolvePath(dest)
+
+	// Validate sourceDir actually has files to deploy
+	if _, err := os.Stat(sourceDir); err != nil {
+		return fmt.Errorf("source directory does not exist: %s", sourceDir)
+	}
+
 	if err := os.MkdirAll(dest, 0755); err != nil {
 		return fmt.Errorf("failed to create destination dir: %w", err)
 	}
 
 	tracker := progress.GetTracker(ctx)
 
-	// Read options
-	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+	copiedCount := 0
+	// Copy files recursively from sourceDir to dest
+	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -75,8 +83,17 @@ func (a *LocalAdapter) Deploy(ctx context.Context, target *kzm.DeployTarget, sou
 		if tracker != nil {
 			tracker.CompleteFile()
 		}
+		if err == nil {
+			copiedCount++
+		}
 		return err
 	})
+
+	if err == nil && copiedCount == 0 {
+		return fmt.Errorf("deployment completed but no files were copied from %s — check that the source directory contains files", sourceDir)
+	}
+
+	return err
 }
 
 // Rollback restores the files using a snapshot path.
