@@ -16,6 +16,7 @@ import (
 
 	"codeforge/internal/daemon"
 	"codeforge/internal/logger"
+	"codeforge/internal/progress"
 )
 
 // showPipelineDetailScreen swaps the main view with a detailed tabbed window for the selected pipeline.
@@ -72,6 +73,35 @@ func (a *CodeForgeApp) showPipelineDetailScreen(project string) {
 
 func (a *CodeForgeApp) buildOverviewTab(p *daemon.Pipeline) fyne.CanvasObject {
 	grid := container.NewVBox()
+
+	// Live transfer progress bar if running
+	if tracker := progress.GetGlobalTracker(p.Program.Meta.Name); tracker != nil {
+		snap := tracker.GetSnapshot()
+		projTitle := widget.NewLabel("⚡ Live Execution Progress")
+		projTitle.TextStyle = fyne.TextStyle{Bold: true}
+
+		bar := widget.NewProgressBar()
+		bar.SetValue(snap.Percentage / 100.0)
+
+		speedStr := progress.FormatBytes(int64(snap.SpeedBytesPerSec)) + "/s"
+		detailsStr := fmt.Sprintf("%d/%d files  •  %s / %s  •  @ %s",
+			snap.TransferredFiles, snap.TotalFiles,
+			progress.FormatBytes(snap.TransferredBytes), progress.FormatBytes(snap.TotalBytes),
+			speedStr)
+
+		detailsLbl := widget.NewLabel(detailsStr)
+		fileLbl := widget.NewLabel(fmt.Sprintf("File: %s", snap.CurrentFile))
+		fileLbl.TextStyle = fyne.TextStyle{Italic: true}
+
+		progressCard := widget.NewCard("Live Transfer Progress", "", container.NewVBox(
+			projTitle,
+			bar,
+			detailsLbl,
+			fileLbl,
+		))
+		grid.Add(progressCard)
+		grid.Add(widget.NewSeparator())
+	}
 
 	// Triggers
 	grid.Add(widget.NewLabel("Triggers:"))

@@ -101,8 +101,10 @@ func (a *CodeForgeApp) showSplash() {
 	go func() {
 		for i := 0.0; i <= 1.0; i += 0.05 {
 			time.Sleep(100 * time.Millisecond)
-			// SetValue is safe to call from goroutines in Fyne
-			prog.SetValue(i)
+			val := i
+			fyne.Do(func() {
+				prog.SetValue(val)
+			})
 		}
 
 		// Initialize Daemon background loop (not a UI op — safe in goroutine)

@@ -13,6 +13,46 @@ import (
 
 type progressKey struct{}
 
+var (
+	globalTrackers   = make(map[string]*Tracker)
+	globalTrackersMu sync.RWMutex
+)
+
+// SetGlobalTracker registers a Tracker for a project.
+func SetGlobalTracker(project string, tracker *Tracker) {
+	globalTrackersMu.Lock()
+	defer globalTrackersMu.Unlock()
+	globalTrackers[project] = tracker
+}
+
+// GetGlobalTracker returns the registered Tracker for a project.
+func GetGlobalTracker(project string) *Tracker {
+	globalTrackersMu.RLock()
+	defer globalTrackersMu.RUnlock()
+	return globalTrackers[project]
+}
+
+// ClearGlobalTracker removes a project's Tracker from registry.
+func ClearGlobalTracker(project string) {
+	globalTrackersMu.Lock()
+	defer globalTrackersMu.Unlock()
+	delete(globalTrackers, project)
+}
+
+// GetAllActiveProgress returns snapshots of all currently running transfers.
+func GetAllActiveProgress() map[string]Snapshot {
+	globalTrackersMu.RLock()
+	defer globalTrackersMu.RUnlock()
+
+	res := make(map[string]Snapshot)
+	for k, v := range globalTrackers {
+		if v != nil {
+			res[k] = v.GetSnapshot()
+		}
+	}
+	return res
+}
+
 // WithTracker attaches a Tracker to context.
 func WithTracker(ctx context.Context, tracker *Tracker) context.Context {
 	return context.WithValue(ctx, progressKey{}, tracker)

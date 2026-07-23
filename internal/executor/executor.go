@@ -168,6 +168,9 @@ func (e *Executor) Execute(ctx context.Context, prog *kzm.Program, sourceDir str
 		})
 
 		tracker := progress.NewTracker(totalFiles, totalBytes)
+		progress.SetGlobalTracker(prog.Meta.Name, tracker)
+		defer progress.ClearGlobalTracker(prog.Meta.Name)
+
 		var lastProgressLog time.Time
 		tracker.RegisterCallback(func(snap progress.Snapshot) {
 			if time.Since(lastProgressLog) > 400*time.Millisecond || snap.Percentage >= 100 {

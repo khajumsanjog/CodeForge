@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -439,15 +440,8 @@ func (d *Daemon) runPipeline(p *Pipeline) {
 		prog = p.Program
 	}
 
-	// Source directory is the parent directory of the configuration file,
-	// or the local git folder if watched.
-	sourceDir := filepath.Dir(p.Path)
-	for _, trig := range prog.Triggers {
-		if trig.Source == "folder" {
-			sourceDir = trig.Path
-			break
-		}
-	}
+	// Resolve source workspace (clones GitHub repo if trigger github is set)
+	sourceDir := d.resolveSourceWorkspace(p, prog)
 
 	// Execute
 	exec := executor.NewExecutor(d.logger, "")
@@ -543,6 +537,71 @@ func formatSHA(sha string) string {
 		return sha[:7]
 	}
 	return sha
+}
+
+func sanitizeFilename(name string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, name)
+}
+
+func (d *Daemon) resolveSourceWorkspace(p *Pipeline, prog *kzm.Program) string {
+	home, _ := os.UserHomeDir()
+	projectName := prog.Meta.Name
+	if projectName == "" {
+		projectName = strings.TrimSuffix(filepath.Base(p.Path), ".kzm")
+	}
+	workspaceDir := filepath.Join(home, ".codeforge", "workspaces", sanitizeFilename(projectName))
+
+	// 1. Check if a folder trigger specifies a custom local path
+	for _, trig := range prog.Triggers {
+		if trig.Source == "folder" && trig.Path != "" {
+			return secrets.ResolvePath(trig.Path)
+		}
+	}
+
+	// 2. Check if a GitHub or GitLab trigger is configured with a repository
+	for _, trig := range prog.Triggers {
+		if (trig.Source == "github" || trig.Source == "gitlab" || trig.Repo != "") && trig.Repo != "" {
+			repoURL := trig.Repo
+			if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") && !strings.HasPrefix(repoURL, "git@") {
+				repoURL = fmt.Sprintf("https://github.com/%s.git", strings.TrimPrefix(repoURL, "github.com/"))
+			}
+
+			_ = os.MkdirAll(filepath.Dir(workspaceDir), 0755)
+
+			if _, err := os.Stat(filepath.Join(workspaceDir, ".git")); err == nil {
+				d.logger.Log(projectName, "INFO", "Pulling latest git changes from %s...", repoURL)
+				cmd := exec.Command("git", "-C", workspaceDir, "pull")
+				_ = cmd.Run()
+			} else {
+				d.logger.Log(projectName, "INFO", "Cloning git repository %s into workspace...", repoURL)
+				_ = os.RemoveAll(workspaceDir)
+				var cmd *exec.Cmd
+				if trig.Branch != "" {
+					cmd = exec.Command("git", "clone", "-b", trig.Branch, repoURL, workspaceDir)
+				} else {
+					cmd = exec.Command("git", "clone", repoURL, workspaceDir)
+				}
+				if err := cmd.Run(); err != nil {
+					d.logger.Log(projectName, "WARNING", "Git clone failed: %v", err)
+				}
+			}
+			return workspaceDir
+		}
+	}
+
+	// 3. Fallback: if p.Path is in ~/.codeforge/pipelines, isolate workspace to prevent deploying .kzm files
+	cfgDir := filepath.Dir(p.Path)
+	if strings.Contains(cfgDir, ".codeforge") && strings.HasSuffix(cfgDir, "pipelines") {
+		_ = os.MkdirAll(workspaceDir, 0755)
+		return workspaceDir
+	}
+
+	return cfgDir
 }
 
 // GetPipelines returns a copy of the active pipelines map.

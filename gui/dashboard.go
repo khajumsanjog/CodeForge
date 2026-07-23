@@ -19,6 +19,7 @@ import (
 
 	"codeforge/internal/env"
 	"codeforge/internal/logger"
+	"codeforge/internal/progress"
 )
 
 // buildDashboardScreen creates the central dashboard canvas containing cards, recent activities, and shortcuts.
@@ -71,11 +72,24 @@ func (a *CodeForgeApp) buildDashboardScreen() fyne.CanvasObject {
 	actionsRow := container.NewGridWithColumns(4, newBtn, triggerBtn, rollbackBtn, restartBtn)
 	actionsCard := widget.NewCard("Quick Actions", "", actionsRow)
 
-	dashboardLayout := container.NewVBox(
-		statsGrid,
-		activityCard,
-		actionsCard,
-	)
+	// Live Active Transfers Card
+	activeTransfersCard := a.buildActiveTransfersCard()
+
+	var dashboardLayout *fyne.Container
+	if activeTransfersCard != nil {
+		dashboardLayout = container.NewVBox(
+			statsGrid,
+			activeTransfersCard,
+			activityCard,
+			actionsCard,
+		)
+	} else {
+		dashboardLayout = container.NewVBox(
+			statsGrid,
+			activityCard,
+			actionsCard,
+		)
+	}
 
 	// Auto-refresh loop
 	go func() {
@@ -419,4 +433,40 @@ func (a *CodeForgeApp) showRollbackDialog() {
 		a.MainWindow.Canvas(),
 	)
 	dialog.Show()
+}
+
+func (a *CodeForgeApp) buildActiveTransfersCard() fyne.CanvasObject {
+	activeMap := progress.GetAllActiveProgress()
+	if len(activeMap) == 0 {
+		return nil
+	}
+
+	box := container.NewVBox()
+	for project, snap := range activeMap {
+		projTitle := widget.NewLabel(fmt.Sprintf("⚡ Transferring: %s", project))
+		projTitle.TextStyle = fyne.TextStyle{Bold: true}
+
+		bar := widget.NewProgressBar()
+		bar.SetValue(snap.Percentage / 100.0)
+
+		speedStr := progress.FormatBytes(int64(snap.SpeedBytesPerSec)) + "/s"
+		detailsStr := fmt.Sprintf("%d/%d files  •  %s / %s  •  @ %s",
+			snap.TransferredFiles, snap.TotalFiles,
+			progress.FormatBytes(snap.TransferredBytes), progress.FormatBytes(snap.TotalBytes),
+			speedStr)
+
+		detailsLbl := widget.NewLabel(detailsStr)
+		fileLbl := widget.NewLabel(fmt.Sprintf("File: %s", snap.CurrentFile))
+		fileLbl.TextStyle = fyne.TextStyle{Italic: true}
+
+		itemBox := container.NewVBox(
+			projTitle,
+			bar,
+			detailsLbl,
+			fileLbl,
+		)
+		box.Add(container.NewPadded(itemBox))
+	}
+
+	return widget.NewCard("Active Data Transfers", "Live pipeline execution progress", box)
 }
