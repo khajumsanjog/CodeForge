@@ -23,6 +23,7 @@ type AppSettings struct {
 	SMTPHost     string `json:"smtp_host"`
 	SMTPPort     int    `json:"smtp_port"`
 	SMTPUser     string `json:"smtp_user"`
+	SMTPPass     string `json:"smtp_pass"`
 }
 
 func loadSettings() *AppSettings {
@@ -131,11 +132,16 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 	smtpUser := widget.NewEntry()
 	smtpUser.SetText(cfg.SMTPUser)
 
+	smtpPass := widget.NewPasswordEntry()
+	smtpPass.SetText(cfg.SMTPPass)
+	smtpPass.SetPlaceHolder("App password or SMTP password")
+
 	notifForm := widget.NewForm(
 		widget.NewFormItem("Slack Webhook URL", slackEntry),
 		widget.NewFormItem("SMTP Host", smtpHost),
 		widget.NewFormItem("SMTP Port", smtpPort),
 		widget.NewFormItem("SMTP Username", smtpUser),
+		widget.NewFormItem("SMTP Password", smtpPass),
 		widget.NewFormItem("Default Recipient", emailEntry),
 	)
 
@@ -183,6 +189,7 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 		cfg.SMTPHost = smtpHost.Text
 		_, _ = fmt.Sscanf(smtpPort.Text, "%d", &cfg.SMTPPort)
 		cfg.SMTPUser = smtpUser.Text
+		cfg.SMTPPass = smtpPass.Text
 
 		err := cfg.save()
 		if err != nil {

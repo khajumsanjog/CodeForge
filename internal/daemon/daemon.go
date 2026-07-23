@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -500,12 +501,40 @@ func (d *Daemon) dispatchNotifications(prog *kzm.Program, status string, duratio
 				d.logger.Log(prog.Meta.Name, "WARNING", "Slack notification failed: %v", err)
 			}
 		case "email":
-			// Load SMTP configs from encrypted secrets if defined, or system environment
+			// Load SMTP configs: first from settings.json, then fall back to env vars
 			host := os.Getenv("SMTP_HOST")
 			portStr := os.Getenv("SMTP_PORT")
 			user := os.Getenv("SMTP_USER")
 			pass := os.Getenv("SMTP_PASS")
 			from := os.Getenv("SMTP_FROM")
+
+			// Override with user's saved settings.json values (higher priority)
+			if cfgData, err := os.ReadFile(filepath.Join(d.cfgDir, "settings.json")); err == nil {
+				var savedCfg struct {
+					SMTPHost string `json:"smtp_host"`
+					SMTPPort int    `json:"smtp_port"`
+					SMTPUser string `json:"smtp_user"`
+					SMTPPass string `json:"smtp_pass"`
+					Email    string `json:"email_address"`
+				}
+				if json.Unmarshal(cfgData, &savedCfg) == nil {
+					if savedCfg.SMTPHost != "" {
+						host = savedCfg.SMTPHost
+					}
+					if savedCfg.SMTPPort > 0 {
+						portStr = strconv.Itoa(savedCfg.SMTPPort)
+					}
+					if savedCfg.SMTPUser != "" {
+						user = savedCfg.SMTPUser
+					}
+					if savedCfg.SMTPPass != "" {
+						pass = savedCfg.SMTPPass
+					}
+					if savedCfg.Email != "" && from == "" {
+						from = savedCfg.Email
+					}
+				}
+			}
 
 			port, _ := strconv.Atoi(portStr)
 			if port == 0 {
