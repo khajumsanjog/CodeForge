@@ -96,17 +96,14 @@ func (a *CodeForgeApp) buildDashboardScreen() fyne.CanvasObject {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				if a.Current != "dashboard" {
-					return
-				}
-				fyne.Do(func() {
-					// Easier to navigate to dashboard to redraw
-					a.NavigateTo("dashboard")
-				})
+		for range ticker.C {
+			if a.Current != "dashboard" {
+				return
 			}
+			fyne.Do(func() {
+				// Easier to navigate to dashboard to redraw
+				a.NavigateTo("dashboard")
+			})
 		}
 	}()
 

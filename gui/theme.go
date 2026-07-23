@@ -28,6 +28,10 @@ func (t CodeForgeTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVarian
 			return color.NRGBA{R: 0xD9, G: 0x77, B: 0x06, A: 0xFF} // Amber Warning
 		case theme.ColorNameInputBackground:
 			return color.NRGBA{R: 0xE2, G: 0xE8, B: 0xF0, A: 0xFF} // Light Input Box
+		case theme.ColorNameDisabled:
+			return color.NRGBA{R: 0x47, G: 0x55, B: 0x69, A: 0xFF} // #475569 Dark Slate for high contrast on disabled items
+		case theme.ColorNamePlaceHolder:
+			return color.NRGBA{R: 0x64, G: 0x74, B: 0x8B, A: 0xFF} // #64748B Placeholder Text
 		case theme.ColorNameButton:
 			return color.NRGBA{R: 0x63, G: 0x66, B: 0xF1, A: 0xFF} // Indigo Button
 		case theme.ColorNameShadow:
@@ -52,6 +56,10 @@ func (t CodeForgeTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVarian
 		return color.NRGBA{R: 0xF5, G: 0x9E, B: 0x0B, A: 0xFF} // #F59E0B (Amber Warning)
 	case theme.ColorNameInputBackground:
 		return color.NRGBA{R: 0x1E, G: 0x29, B: 0x3B, A: 0xFF} // #1E293B (Slate Input)
+	case theme.ColorNameDisabled:
+		return color.NRGBA{R: 0x94, G: 0xA3, B: 0xB8, A: 0xFF} // #94A3B8 Slate Disabled
+	case theme.ColorNamePlaceHolder:
+		return color.NRGBA{R: 0x64, G: 0x74, B: 0x8B, A: 0xFF} // #64748B Placeholder Text
 	case theme.ColorNameButton:
 		return color.NRGBA{R: 0x4F, G: 0x46, B: 0xE5, A: 0xFF} // #4F46E5 (Deep Indigo Button)
 	case theme.ColorNameShadow:

@@ -444,7 +444,6 @@ func (a *CodeForgeApp) buildWizardStep4(state *WizardState) fyne.CanvasObject {
 func (a *CodeForgeApp) buildWizardStep5(state *WizardState) fyne.CanvasObject {
 	previewArea := widget.NewMultiLineEntry()
 	previewArea.TextStyle = fyne.TextStyle{Monospace: true}
-	previewArea.Disable()
 
 	slackHookEntry := widget.NewEntry()
 	slackHookEntry.SetPlaceHolder("https://hooks.slack.com/...")

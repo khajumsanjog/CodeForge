@@ -57,7 +57,10 @@ func (e *EmailNotifier) Send(payload Payload) error {
 	// Set all recipients in the To header
 	m.SetHeader("To", e.Recipients...)
 
-	subject := fmt.Sprintf("[%s] CodeForge Deployment: %s", payload.Project, strings.ToUpper(payload.Status))
+	subject := fmt.Sprintf("[%s] CodeForge Development: %s", payload.Project, strings.ToUpper(payload.Status))
+	if strings.TrimSpace(payload.Project) == "" {
+		subject = fmt.Sprintf("CodeForge Development: %s", strings.ToUpper(payload.Status))
+	}
 	m.SetHeader("Subject", subject)
 
 	// Emoji indicator
@@ -95,7 +98,7 @@ func (e *EmailNotifier) Send(payload Payload) error {
 </head>
 <body>
     <div class="card">
-        <h2>CodeForge Deployment Report</h2>
+        <h2>CodeForge Development Report</h2>
         <p>Your pipeline has completed with status: <span class="status">%s %s</span></p>
         <table>
             <tr>

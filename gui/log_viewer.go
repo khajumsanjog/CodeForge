@@ -115,15 +115,12 @@ func (a *CodeForgeApp) buildLogViewerScreen() fyne.CanvasObject {
 	go func() {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if a.Current != "logs" {
-					return
-				}
-				if liveTail {
-					reloadLogs()
-				}
+		for range ticker.C {
+			if a.Current != "logs" {
+				return
+			}
+			if liveTail {
+				reloadLogs()
 			}
 		}
 	}()
@@ -157,7 +154,8 @@ func (a *CodeForgeApp) buildLogViewerScreen() fyne.CanvasObject {
 				if err := json.Unmarshal([]byte(line), &entry); err == nil {
 					sb.WriteString(fmt.Sprintf("[%s] [%s] %s\n", entry.Timestamp, entry.Level, entry.Message))
 				} else {
-					sb.WriteString(line + "\n")
+					sb.WriteString(line)
+					sb.WriteString("\n")
 				}
 			}
 

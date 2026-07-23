@@ -61,7 +61,7 @@ func (s *SlackNotifier) Send(payload Payload) error {
 						"type": "section",
 						"text": map[string]string{
 							"type": "mrkdwn",
-							"text": fmt.Sprintf("*CodeForge Deployment* %s *%s*", emoji, statusStr),
+							"text": fmt.Sprintf("*CodeForge Development* %s *%s*", emoji, statusStr),
 						},
 					},
 					{
