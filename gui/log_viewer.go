@@ -26,13 +26,46 @@ func (a *CodeForgeApp) buildLogViewerScreen() fyne.CanvasObject {
 	files, err := filepath.Glob(filepath.Join(pipelinesDir, "*.kzm"))
 	
 	projects := []string{"daemon"} // fallback
+	// Add loaded pipelines from daemon
+	for pName := range a.Daemon.GetPipelines() {
+		if pName != "" {
+			found := false
+			for _, existing := range projects {
+				if existing == pName {
+					found = true
+					break
+				}
+			}
+			if !found {
+				projects = append(projects, pName)
+			}
+		}
+	}
 	if err == nil {
 		for _, f := range files {
-			projects = append(projects, strings.TrimSuffix(filepath.Base(f), ".kzm"))
+			pName := strings.TrimSuffix(filepath.Base(f), ".kzm")
+			found := false
+			for _, existing := range projects {
+				if existing == pName {
+					found = true
+					break
+				}
+			}
+			if !found {
+				projects = append(projects, pName)
+			}
 		}
 	}
 
 	selectedProject := projects[0]
+	if a.SelectedLogProject != "" {
+		for _, pName := range projects {
+			if strings.EqualFold(pName, a.SelectedLogProject) {
+				selectedProject = pName
+				break
+			}
+		}
+	}
 
 	logLinesContainer := container.NewVBox()
 	scroll := container.NewVScroll(logLinesContainer)

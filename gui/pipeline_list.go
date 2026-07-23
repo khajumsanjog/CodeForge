@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"image/color"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"codeforge/internal/kzm"
+	"codeforge/internal/progress"
 )
 
 // buildPipelineListScreen creates the main listing window for all registered .kzm configurations.
@@ -123,12 +123,30 @@ func (a *CodeForgeApp) populatePipelineCards(list *fyne.Container) {
 		}
 		runTimeLbl := widget.NewLabel(runTimeText)
 
+		// Check if live data transfer progress is running
+		var progressBox fyne.CanvasObject
+		if tracker := progress.GetGlobalTracker(projectName); tracker != nil {
+			snap := tracker.GetSnapshot()
+			bar := widget.NewProgressBar()
+			bar.SetValue(snap.Percentage / 100.0)
+
+			speedStr := progress.FormatBytes(int64(snap.SpeedBytesPerSec)) + "/s"
+			detailsStr := fmt.Sprintf("Transferring: %d/%d files (%s / %s @ %s)",
+				snap.TransferredFiles, snap.TotalFiles,
+				progress.FormatBytes(snap.TransferredBytes), progress.FormatBytes(snap.TotalBytes),
+				speedStr)
+			progressBox = container.NewVBox(bar, widget.NewLabel(detailsStr))
+		}
+
 		// Clickable body container redirecting to details
 		infoVBox := container.NewVBox(
 			container.NewHBox(nameLbl, layout.NewSpacer(), widget.NewLabel(status)),
 			trigLbl,
 			runTimeLbl,
 		)
+		if progressBox != nil {
+			infoVBox.Add(progressBox)
+		}
 
 		// Action buttons
 		runBtn := widget.NewButton("Run", func() {
@@ -136,6 +154,7 @@ func (a *CodeForgeApp) populatePipelineCards(list *fyne.Container) {
 			a.NavigateTo("pipelines") // refresh
 		})
 		logsBtn := widget.NewButton("Logs", func() {
+			a.SelectedLogProject = projectName
 			a.NavigateTo("logs")
 		})
 		editBtn := widget.NewButton("Edit", func() {
@@ -160,9 +179,9 @@ func (a *CodeForgeApp) populatePipelineCards(list *fyne.Container) {
 		bodyBtn := widget.NewButton("", func() {
 			a.showPipelineDetailScreen(projectName)
 		})
-		// Simple card background styling
-		bg := canvas.NewRectangle(color.NRGBA{R: 0x24, G: 0x24, B: 0x3B, A: 0xFF})
-		bg.CornerRadius = 6
+		// Theme-adaptive card background styling
+		bg := canvas.NewRectangle(a.FyneApp.Settings().Theme().Color("inputBackground", 0))
+		bg.CornerRadius = 8
 
 		cardStack := container.NewStack(bg, bodyBtn, container.NewPadded(cardBorder))
 		list.Add(cardStack)

@@ -62,10 +62,10 @@ func (a *CodeForgeApp) buildHeader() fyne.CanvasObject {
 	logo := LoadLogo()
 	img := canvas.NewImageFromResource(logo)
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(32, 32))
+	img.SetMinSize(fyne.NewSize(48, 48))
 
 	title := canvas.NewText("CodeForge", a.FyneApp.Settings().Theme().Color("primary", 0))
-	title.TextSize = 18
+	title.TextSize = 24
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
 	sep := widget.NewLabel("·")

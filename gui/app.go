@@ -18,16 +18,17 @@ import (
 
 // CodeForgeApp aggregates the GUI state, logging, and daemon instances.
 type CodeForgeApp struct {
-	FyneApp     fyne.App
-	MainWindow  fyne.Window
-	Daemon      *daemon.Daemon
-	Logger      *logger.Logger
-	Current     string // Name of current active screen
-	ContentArea *fyne.Container
-	SidebarArea *fyne.Container
-	StatusLabel *widget.Label
-	StatusDot   *MinSizeCircle
-	Version     string
+	FyneApp            fyne.App
+	MainWindow         fyne.Window
+	Daemon             *daemon.Daemon
+	Logger             *logger.Logger
+	Current            string // Name of current active screen
+	SelectedLogProject string
+	ContentArea        *fyne.Container
+	SidebarArea        *fyne.Container
+	StatusLabel        *widget.Label
+	StatusDot          *MinSizeCircle
+	Version            string
 }
 
 // NewApp instantiates the Fyne application and custom branding theme.

@@ -12,6 +12,31 @@ type CodeForgeTheme struct{}
 
 // Color returns the brand-specific color palette for widgets.
 func (t CodeForgeTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	if variant == theme.VariantLight {
+		switch name {
+		case theme.ColorNamePrimary:
+			return color.NRGBA{R: 0x4F, G: 0x46, B: 0xE5, A: 0xFF} // #4F46E5 Indigo
+		case theme.ColorNameBackground:
+			return color.NRGBA{R: 0xF8, G: 0xFA, B: 0xFC, A: 0xFF} // Clean Light Slate
+		case theme.ColorNameForeground:
+			return color.NRGBA{R: 0x0F, G: 0x17, B: 0x2A, A: 0xFF} // Dark Slate Text
+		case theme.ColorNameSuccess:
+			return color.NRGBA{R: 0x05, G: 0x96, B: 0x69, A: 0xFF} // Emerald Green
+		case theme.ColorNameError:
+			return color.NRGBA{R: 0xDC, G: 0x26, B: 0x26, A: 0xFF} // Red Error
+		case theme.ColorNameWarning:
+			return color.NRGBA{R: 0xD9, G: 0x77, B: 0x06, A: 0xFF} // Amber Warning
+		case theme.ColorNameInputBackground:
+			return color.NRGBA{R: 0xE2, G: 0xE8, B: 0xF0, A: 0xFF} // Light Input Box
+		case theme.ColorNameButton:
+			return color.NRGBA{R: 0x63, G: 0x66, B: 0xF1, A: 0xFF} // Indigo Button
+		case theme.ColorNameShadow:
+			return color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x20}
+		default:
+			return theme.DefaultTheme().Color(name, theme.VariantLight)
+		}
+	}
+
 	switch name {
 	case theme.ColorNamePrimary:
 		return color.NRGBA{R: 0x63, G: 0x66, B: 0xF1, A: 0xFF} // #6366F1 (Indigo Accent)
