@@ -75,3 +75,17 @@ func (t CodeForgeTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 func (t CodeForgeTheme) Size(name fyne.ThemeSizeName) float32 {
 	return theme.DefaultTheme().Size(name)
 }
+
+// lightThemeWrapper forces VariantLight regardless of OS setting.
+type lightThemeWrapper struct{ CodeForgeTheme }
+
+func (w lightThemeWrapper) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
+	return w.CodeForgeTheme.Color(name, theme.VariantLight)
+}
+
+// darkThemeWrapper forces VariantDark regardless of OS setting.
+type darkThemeWrapper struct{ CodeForgeTheme }
+
+func (w darkThemeWrapper) Color(name fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
+	return w.CodeForgeTheme.Color(name, theme.VariantDark)
+}

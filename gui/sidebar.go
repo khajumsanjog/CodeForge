@@ -9,14 +9,14 @@ import (
 
 // buildSidebar populates the sidebar panel with navigation entries and the daemon power control.
 func (a *CodeForgeApp) buildSidebar() {
-	// 1. Sidebar Header (Logo 84x84 + Text)
+	// 1. Sidebar Header (Logo 100x100 + Text)
 	logo := LoadLogo()
 	img := canvas.NewImageFromResource(logo)
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(84, 84))
+	img.SetMinSize(fyne.NewSize(100, 100))
 
 	headerText := canvas.NewText("CodeForge", a.FyneApp.Settings().Theme().Color("primary", 0))
-	headerText.TextSize = 20
+	headerText.TextSize = 22
 	headerText.Alignment = fyne.TextAlignCenter
 	headerText.TextStyle = fyne.TextStyle{Bold: true}
 

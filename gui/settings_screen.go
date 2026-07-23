@@ -188,7 +188,9 @@ func (a *CodeForgeApp) buildSettingsScreen() fyne.CanvasObject {
 		if err != nil {
 			dialog.ShowError(err, a.MainWindow)
 		} else {
-			dialog.ShowInformation("Saved", "Settings saved successfully and applied.", a.MainWindow)
+			// Apply theme immediately
+			a.applyTheme(cfg.ThemeMode)
+			dialog.ShowInformation("Saved", "Settings saved and theme applied.", a.MainWindow)
 		}
 	})
 	saveBtn.Importance = widget.HighImportance

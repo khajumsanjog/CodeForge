@@ -114,7 +114,7 @@ func (a *CodeForgeApp) buildDashboardScreen() fyne.CanvasObject {
 }
 
 func createStatCard(title string, value string, subtext string, topBorderColor color.Color, a *CodeForgeApp) *fyne.Container {
-	bg := canvas.NewRectangle(color.NRGBA{R: 0x24, G: 0x24, B: 0x3B, A: 0xFF}) // Sleek dark card container
+	bg := canvas.NewRectangle(a.FyneApp.Settings().Theme().Color("inputBackground", 0))
 	bg.CornerRadius = 8
 
 	border := canvas.NewRectangle(topBorderColor)

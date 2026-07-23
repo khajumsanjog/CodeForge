@@ -52,7 +52,22 @@ func NewApp(version string) *CodeForgeApp {
 		Version: version,
 	}
 
+	// Load and apply saved theme preference at startup
+	cfg := loadSettings()
+	cfApp.applyTheme(cfg.ThemeMode)
+
 	return cfApp
+}
+
+// applyTheme switches the app between Dark and Light theme variants.
+func (a *CodeForgeApp) applyTheme(mode string) {
+	a.FyneApp.Settings().SetTheme(&CodeForgeTheme{})
+	if mode == "Light" {
+		// Force Fyne to use VariantLight by wrapping theme
+		a.FyneApp.Settings().SetTheme(&lightThemeWrapper{CodeForgeTheme{}})
+	} else {
+		a.FyneApp.Settings().SetTheme(&darkThemeWrapper{CodeForgeTheme{}})
+	}
 }
 
 // Run displays the splash screen, starts background operations, and kicks off the main loop.
