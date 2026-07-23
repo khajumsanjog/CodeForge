@@ -349,12 +349,13 @@ func (d *Daemon) ReloadPipeline(path string) {
 		return
 	}
 
-	projectName := prog.Meta.Name
+	projectName := strings.TrimSpace(prog.Meta.Name)
 	if projectName == "" {
 		// Fallback to filename
-		projectName = strings.TrimSuffix(filepath.Base(path), ".kzm")
-		prog.Meta.Name = projectName
+		projectName = strings.TrimSpace(strings.TrimSuffix(filepath.Base(path), ".kzm"))
 	}
+	// Always keep prog.Meta.Name clean
+	prog.Meta.Name = projectName
 
 	// Unregister old schedules first
 	if d.scheduler != nil {
@@ -579,9 +580,9 @@ func sanitizeFilename(name string) string {
 
 func (d *Daemon) resolveSourceWorkspace(p *Pipeline, prog *kzm.Program) string {
 	home, _ := os.UserHomeDir()
-	projectName := prog.Meta.Name
+	projectName := strings.TrimSpace(prog.Meta.Name)
 	if projectName == "" {
-		projectName = strings.TrimSuffix(filepath.Base(p.Path), ".kzm")
+		projectName = strings.TrimSpace(strings.TrimSuffix(filepath.Base(p.Path), ".kzm"))
 	}
 	workspaceDir := filepath.Join(home, ".codeforge", "workspaces", sanitizeFilename(projectName))
 
@@ -617,8 +618,17 @@ func (d *Daemon) resolveSourceWorkspace(p *Pipeline, prog *kzm.Program) string {
 				}
 				if err := cmd.Run(); err != nil {
 					d.logger.Log(projectName, "WARNING", "Git clone failed: %v", err)
+					return workspaceDir
 				}
 			}
+
+			// Read the HEAD commit SHA and expose it for notifications
+			if shaOut, err := exec.Command("git", "-C", workspaceDir, "rev-parse", "HEAD").Output(); err == nil {
+				sha := strings.TrimSpace(string(shaOut))
+				os.Setenv("CODEFORGE_COMMIT_SHA", sha)
+				d.logger.Log(projectName, "INFO", "Commit: %s", formatSHA(sha))
+			}
+
 			return workspaceDir
 		}
 	}
